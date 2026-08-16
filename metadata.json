@@ -1,0 +1,7 @@
+{
+  "name": "Ethiopian Period Planner",
+  "description": "A premium, feminine, private Ethiopian period and cycle wellness planner supporting Ethiopian and Gregorian calendars in English and Amharic.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
