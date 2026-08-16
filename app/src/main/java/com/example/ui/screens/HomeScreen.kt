@@ -70,6 +70,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.DailyLogRecord
+import com.example.ui.components.AnimatedCountdownSection
+import com.example.ui.components.AnimatedCycleDayProgress
 import com.example.ui.components.CycleRing
 import com.example.ui.components.FlowSelector
 import com.example.ui.components.GirlyPrimaryButton
@@ -233,57 +235,26 @@ fun HomeScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Left Column: Bold Typography Countdown
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        // Left Column: Animated Countdown Display (e.g. 6 days / Expected Aug 22)
+                        AnimatedCountdownSection(
+                            daysRemaining = cycleStatus.daysUntilNextPeriod,
+                            daysLabel = if (isAmharic) "ቀናት" else "days",
+                            expectedDateText = Localization.getExpectedDateText(expectedDateDisplay, isAmharic),
+                            titleText = Localization.getNextPeriodTitle(isAmharic),
                             modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                text = Localization.getNextPeriodTitle(isAmharic).uppercase(),
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
-                                letterSpacing = 1.2.sp
-                            )
-                            Row(
-                                verticalAlignment = Alignment.Bottom,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Text(
-                                    text = "${cycleStatus.daysUntilNextPeriod}",
-                                    style = MaterialTheme.typography.displayLarge.copy(
-                                        fontSize = 48.sp,
-                                        lineHeight = 48.sp
-                                    ),
-                                    fontWeight = FontWeight.Black,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Text(
-                                    text = if (isAmharic) "ቀናት" else "days",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.padding(bottom = 6.dp)
-                                )
-                            }
-                            Text(
-                                text = Localization.getExpectedDateText(expectedDateDisplay, isAmharic),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
-                            )
-                        }
+                        )
 
-                        // Right: Cycle Ring visual
+                        // Right: Cycle Ring visual with Animated Day Counter (e.g. 22)
                         Box(
                             contentAlignment = Alignment.Center,
-                            modifier = Modifier.size(112.dp)
+                            modifier = Modifier.size(116.dp)
                         ) {
                             CycleRing(
                                 currentDay = cycleStatus.currentCycleDay,
                                 totalDays = cycleStatus.totalCycleLength,
                                 phaseText = Localization.getPhaseName(cycleStatus.phase.rawName, isAmharic),
                                 cycleDayLabel = Localization.getCycleDayLabel(isAmharic),
-                                size = 112.dp,
+                                size = 116.dp,
                                 strokeWidth = 8.dp,
                                 modifier = Modifier.testTag("cycle_ring")
                             )
@@ -292,7 +263,7 @@ fun HomeScreen(
 
                     Spacer(modifier = Modifier.height(18.dp))
 
-                    // Card Bottom Divider & Status Summary
+                    // Card Bottom Divider
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -302,57 +273,18 @@ fun HomeScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = Localization.getCycleDayText(
-                                cycleStatus.currentCycleDay,
-                                cycleStatus.totalCycleLength,
-                                isAmharic
-                            ),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-
-                        // Regularity badge
-                        Surface(
-                            shape = RoundedCornerShape(50),
-                            color = com.example.ui.theme.SoftSuccess.copy(alpha = 0.14f),
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.dp,
-                                com.example.ui.theme.SoftSuccess.copy(alpha = 0.3f)
-                            )
-                        ) {
-                            Text(
-                                text = Localization.getCycleRegularityText(cycleStatus.regularity, isAmharic) + " ✨",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = com.example.ui.theme.SoftSuccess,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    // Phase insight message
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = Localization.getPhaseDescription(cycleStatus.phase.rawName, isAmharic),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
-                        )
-                    }
+                    // Animated Cycle Day Progress ("Cycle day 22 of 28", regularity & phase insight)
+                    AnimatedCycleDayProgress(
+                        currentDay = cycleStatus.currentCycleDay,
+                        totalDays = cycleStatus.totalCycleLength,
+                        cycleDayText = Localization.getCycleDayText(
+                            cycleStatus.currentCycleDay,
+                            cycleStatus.totalCycleLength,
+                            isAmharic
+                        ),
+                        regularityText = Localization.getCycleRegularityText(cycleStatus.regularity, isAmharic),
+                        phaseDescription = Localization.getPhaseDescription(cycleStatus.phase.rawName, isAmharic)
+                    )
                 }
             }
         }

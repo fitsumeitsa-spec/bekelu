@@ -1,5 +1,6 @@
 package com.example.ui.components
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -7,12 +8,16 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -176,19 +181,36 @@ fun CycleRing(
     val progress = (currentDay.toFloat() / totalDays.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f)
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
-        animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = 1100, easing = FastOutSlowInEasing),
         label = "cycle_progress"
+    )
+
+    // Animated counting integer for the center day number (e.g. 22)
+    val animatedDayNumber by animateIntAsState(
+        targetValue = currentDay,
+        animationSpec = tween(durationMillis = 900, easing = FastOutSlowInEasing),
+        label = "cycle_day_number"
     )
 
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1.0f,
-        targetValue = 1.04f,
+        targetValue = 1.05f,
         animationSpec = infiniteRepeatable(
             animation = tween(2200, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "pulse_scale"
+    )
+
+    val auraGlow by infiniteTransition.animateFloat(
+        initialValue = 0.25f,
+        targetValue = 0.55f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "ring_aura_glow"
     )
 
     Box(
@@ -201,6 +223,21 @@ fun CycleRing(
             val radius = (canvasSize - strokePx) / 2f
             val center = Offset(canvasSize / 2f, canvasSize / 2f)
 
+            // Ambient background aura
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        primaryColor.copy(alpha = auraGlow * 0.35f),
+                        accentColor.copy(alpha = auraGlow * 0.18f),
+                        Color.Transparent
+                    ),
+                    center = center,
+                    radius = radius * 1.15f
+                ),
+                radius = radius * 1.15f,
+                center = center
+            )
+
             // Background Track
             drawCircle(
                 color = backgroundColor,
@@ -209,7 +246,7 @@ fun CycleRing(
                 style = Stroke(width = strokePx, cap = StrokeCap.Round)
             )
 
-            // Progress Arc
+            // Progress Arc with smooth gradient
             val sweepAngle = animatedProgress * 360f
             drawArc(
                 brush = Brush.sweepGradient(
@@ -226,11 +263,19 @@ fun CycleRing(
                 style = Stroke(width = strokePx, cap = StrokeCap.Round)
             )
 
-            // Glowing Indicator Dot at Head
+            // Glowing Indicator Dot at Arc Head
             if (animatedProgress > 0.01f) {
                 val angleRad = Math.toRadians((sweepAngle - 90.0)).toFloat()
                 val dotX = center.x + radius * cos(angleRad)
                 val dotY = center.y + radius * sin(angleRad)
+
+                // Outer glow
+                drawCircle(
+                    color = primaryColor.copy(alpha = 0.5f),
+                    radius = strokePx * 0.8f,
+                    center = Offset(dotX, dotY)
+                )
+                // Center white dot
                 drawCircle(
                     color = Color.White,
                     radius = strokePx * 0.45f,
@@ -239,17 +284,17 @@ fun CycleRing(
             }
         }
 
-        // Central Content
+        // Central Content with Animated Transition Day Counter
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
             modifier = Modifier.padding(16.dp)
         ) {
-            Text(
-                text = "$currentDay",
-                style = MaterialTheme.typography.displayLarge.copy(fontSize = 38.sp),
-                fontWeight = FontWeight.Bold,
+            AnimatedNumberTransition(
+                number = currentDay,
+                textStyle = MaterialTheme.typography.displayLarge.copy(fontSize = 38.sp),
                 color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold,
                 modifier = Modifier.scale(pulseScale)
             )
             Text(
@@ -271,6 +316,287 @@ fun CycleRing(
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                 )
             }
+        }
+    }
+}
+
+/**
+ * AnimatedNumberTransition provides an ultra-smooth digit ticker transition using
+ * Jetpack Compose's Transition API (AnimatedContent + spring physics) for premium numeric feel.
+ */
+@Composable
+fun AnimatedNumberTransition(
+    number: Int,
+    modifier: Modifier = Modifier,
+    textStyle: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.displayLarge,
+    color: Color = MaterialTheme.colorScheme.primary,
+    fontWeight: FontWeight = FontWeight.Black
+) {
+    val numberString = number.toString()
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        for (i in numberString.indices) {
+            val char = numberString[i]
+            AnimatedContent(
+                targetState = char,
+                transitionSpec = {
+                    if (targetState > initialState) {
+                        (slideInVertically(
+                            animationSpec = spring(dampingRatio = 0.78f, stiffness = 420f)
+                        ) { fullHeight -> fullHeight } + fadeIn(
+                            animationSpec = tween(220)
+                        )).togetherWith(
+                            slideOutVertically(
+                                animationSpec = spring(dampingRatio = 0.78f, stiffness = 420f)
+                            ) { fullHeight -> -fullHeight } + fadeOut(
+                                animationSpec = tween(180)
+                            )
+                        )
+                    } else {
+                        (slideInVertically(
+                            animationSpec = spring(dampingRatio = 0.78f, stiffness = 420f)
+                        ) { fullHeight -> -fullHeight } + fadeIn(
+                            animationSpec = tween(220)
+                        )).togetherWith(
+                            slideOutVertically(
+                                animationSpec = spring(dampingRatio = 0.78f, stiffness = 420f)
+                            ) { fullHeight -> fullHeight } + fadeOut(
+                                animationSpec = tween(180)
+                            )
+                        )
+                    }
+                },
+                label = "digit_ticker_$i"
+            ) { targetChar ->
+                Text(
+                    text = targetChar.toString(),
+                    style = textStyle,
+                    color = color,
+                    fontWeight = fontWeight
+                )
+            }
+        }
+    }
+}
+
+/**
+ * AnimatedCountdownSection renders the primary cycle countdown (e.g., "6 days / Expected Aug 22")
+ * with dynamic number transition API, glowing aura breathing, and elegant typography transitions.
+ */
+@Composable
+fun AnimatedCountdownSection(
+    daysRemaining: Int,
+    daysLabel: String,
+    expectedDateText: String,
+    titleText: String,
+    modifier: Modifier = Modifier
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "countdown_breathing")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 1.0f,
+        targetValue = 1.04f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2400, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "countdown_pulse"
+    )
+
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.2f,
+        targetValue = 0.45f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "countdown_glow"
+    )
+
+    Column(
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = modifier
+    ) {
+        Text(
+            text = titleText.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            letterSpacing = 1.2.sp
+        )
+
+        Box(
+            contentAlignment = Alignment.CenterStart,
+            modifier = Modifier.padding(vertical = 2.dp)
+        ) {
+            // Ambient soft glowing backdrop for the prominent number
+            Canvas(
+                modifier = Modifier
+                    .size(width = 90.dp, height = 56.dp)
+            ) {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            SoftRose.copy(alpha = glowAlpha),
+                            LavenderAccent.copy(alpha = glowAlpha * 0.5f),
+                            Color.Transparent
+                        ),
+                        center = Offset(36.dp.toPx(), 28.dp.toPx()),
+                        radius = 45.dp.toPx()
+                    ),
+                    radius = 45.dp.toPx(),
+                    center = Offset(36.dp.toPx(), 28.dp.toPx())
+                )
+            }
+
+            Row(
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                AnimatedNumberTransition(
+                    number = daysRemaining,
+                    textStyle = MaterialTheme.typography.displayLarge.copy(
+                        fontSize = 50.sp,
+                        lineHeight = 50.sp
+                    ),
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Black,
+                    modifier = Modifier.scale(pulseScale)
+                )
+                Text(
+                    text = daysLabel,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(bottom = 6.dp)
+                )
+            }
+        }
+
+        // Expected Date with clean calendar styling
+        Surface(
+            shape = RoundedCornerShape(10.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            modifier = Modifier.padding(top = 2.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Text(text = "🌸", fontSize = 12.sp)
+                Text(
+                    text = expectedDateText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+/**
+ * AnimatedCycleDayProgress renders the animated cycle progress ("Cycle day 22 of 28")
+ * with dynamic count-up, glowing linear progress track, and regularity indicator.
+ */
+@Composable
+fun AnimatedCycleDayProgress(
+    currentDay: Int,
+    totalDays: Int,
+    cycleDayText: String,
+    regularityText: String,
+    phaseDescription: String,
+    modifier: Modifier = Modifier
+) {
+    val progress = (currentDay.toFloat() / totalDays.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f)
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
+        label = "linear_cycle_progress"
+    )
+
+    val animatedDay by animateIntAsState(
+        targetValue = currentDay,
+        animationSpec = tween(durationMillis = 900, easing = FastOutSlowInEasing),
+        label = "linear_cycle_day"
+    )
+
+    Column(
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = cycleDayText,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            // Regularity badge
+            Surface(
+                shape = RoundedCornerShape(50),
+                color = com.example.ui.theme.SoftSuccess.copy(alpha = 0.14f),
+                border = BorderStroke(
+                    1.dp,
+                    com.example.ui.theme.SoftSuccess.copy(alpha = 0.3f)
+                )
+            ) {
+                Text(
+                    text = "$regularityText ✨",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = com.example.ui.theme.SoftSuccess,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                )
+            }
+        }
+
+        // Animated Gradient Linear Progress Bar
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(animatedProgress)
+                    .fillMaxSize()
+                    .clip(CircleShape)
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                LavenderAccent,
+                                SoftRose,
+                                MaterialTheme.colorScheme.primary
+                            )
+                        )
+                    )
+            )
+        }
+
+        // Phase insight message card
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = phaseDescription,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+            )
         }
     }
 }

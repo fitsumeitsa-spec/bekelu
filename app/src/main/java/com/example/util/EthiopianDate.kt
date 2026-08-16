@@ -35,11 +35,13 @@ data class EthiopianDate(
 
     fun toGregorianLocalDate(): LocalDate {
         val jdn = ethiopianToJdn(year, month, day)
-        val (gYear, gMonth, gDay) = jdnToGregorian(jdn)
-        return LocalDate.of(gYear, gMonth, gDay)
+        return LocalDate.ofEpochDay(jdn - JDN_UNIX_EPOCH)
     }
 
     companion object {
+        const val JDN_OFFSET = 1723856L
+        const val JDN_UNIX_EPOCH = 2440588L
+
         val ETHIOPIAN_MONTHS_EN = listOf(
             "Meskerem", "Tikimt", "Hidar", "Tahsas",
             "Tir", "Yakatit", "Megabit", "Miazia",
@@ -57,7 +59,7 @@ data class EthiopianDate(
         val DAYS_SHORT_EN = listOf("M", "T", "W", "T", "F", "S", "S")
 
         fun fromGregorian(localDate: LocalDate): EthiopianDate {
-            val jdn = gregorianToJdn(localDate.year, localDate.monthValue, localDate.dayOfMonth)
+            val jdn = localDate.toEpochDay() + JDN_UNIX_EPOCH
             return jdnToEthiopian(jdn)
         }
 
@@ -66,37 +68,26 @@ data class EthiopianDate(
         }
 
         fun gregorianToJdn(year: Int, month: Int, day: Int): Long {
-            val a = (14 - month) / 12
-            val y = year + 4800 - a
-            val m = month + 12 * a - 3
-            return day + (153L * m + 2) / 5 + 365L * y + (y / 4) - (y / 100) + (y / 400) - 32045L
+            val localDate = LocalDate.of(year, month, day)
+            return localDate.toEpochDay() + JDN_UNIX_EPOCH
         }
 
         fun jdnToEthiopian(jdn: Long): EthiopianDate {
-            val r = (jdn - 1723856L) % 1461L
+            val r = (jdn - JDN_OFFSET) % 1461L
             val n = (r % 365L) + 365L * (r / 1460L)
-            val year = 4L * ((jdn - 1723856L) / 1461L) + (r / 365L) - (r / 1460L)
+            val year = 4L * ((jdn - JDN_OFFSET) / 1461L) + (r / 365L) - (r / 1460L)
             val month = (n / 30L) + 1L
             val day = (n % 30L) + 1L
             return EthiopianDate(year.toInt(), month.toInt(), day.toInt())
         }
 
         fun ethiopianToJdn(year: Int, month: Int, day: Int): Long {
-            return 1723856L + 365L * (year - 1L) + (year / 4L) + 30L * (month - 1L) + day - 1L
+            return JDN_OFFSET + 1461L * (year.toLong() / 4L) + 365L * (year.toLong() % 4L) + 30L * (month.toLong() - 1L) + day.toLong() - 1L
         }
 
         fun jdnToGregorian(jdn: Long): Triple<Int, Int, Int> {
-            val l = jdn + 68569L
-            val n = (4L * l) / 146097L
-            val l2 = l - (146097L * n + 3L) / 4L
-            val i = (4000L * (l2 + 1L)) / 1461001L
-            val l3 = l2 - (1461L * i) / 4L + 31L
-            val j = (80L * l3) / 2447L
-            val day = (l3 - (2447L * j) / 80L).toInt()
-            val l4 = j / 11L
-            val month = (j + 2L - 12L * l4).toInt()
-            val year = (100L * (n - 49L) + i + l4).toInt()
-            return Triple(year, month, day)
+            val localDate = LocalDate.ofEpochDay(jdn - JDN_UNIX_EPOCH)
+            return Triple(localDate.year, localDate.monthValue, localDate.dayOfMonth)
         }
     }
 }

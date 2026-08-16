@@ -189,7 +189,7 @@ fun CalendarScreen(
                     // Month Navigation Header & Today Quick Jump
                     val monthHeaderTitle = if (calendarMode == "ETHIOPIAN") {
                         val mName = currentEthDate.getMonthName(isAmharic)
-                        "$mName ${currentEthDate.year}"
+                        if (isAmharic) "$mName ${currentEthDate.year} ዓ.ም" else "$mName ${currentEthDate.year} (EC)"
                     } else {
                         val mName = currentYearMonth.month.name.lowercase().replaceFirstChar { it.uppercase() }
                         "$mName ${currentYearMonth.year}"
@@ -235,7 +235,7 @@ fun CalendarScreen(
                                 modifier = Modifier.height(26.dp)
                             ) {
                                 Text(
-                                    text = if (isAmharic) "ወደ ዛሬ ተመለስ" else "Jump to Today",
+                                    text = if (isAmharic) "ወደ ዛሬ ተመለስ 🌸" else "Jump to Today 🌸",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.primary
                                 )
@@ -276,7 +276,7 @@ fun CalendarScreen(
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.width(36.dp),
+                                modifier = Modifier.width(38.dp),
                                 textAlign = TextAlign.Center
                             )
                         }
@@ -305,6 +305,7 @@ fun CalendarScreen(
                                             val cellEthDate = currentEthDate.copy(day = dayNumber)
                                             val cellLocalDate = cellEthDate.toGregorianLocalDate()
                                             val isToday = cellLocalDate == today
+                                            val isSelected = selectedDateForSheet == cellLocalDate
                                             val isPeriod = CycleEngine.isDateInPeriod(cellLocalDate, allPeriods)
                                             val isPredicted = !isPeriod && CycleEngine.isDatePredictedPeriod(
                                                 cellLocalDate,
@@ -323,7 +324,9 @@ fun CalendarScreen(
 
                                             CalendarDayCell(
                                                 dayText = "$dayNumber",
+                                                secondaryDayText = "${cellLocalDate.dayOfMonth}",
                                                 isToday = isToday,
+                                                isSelected = isSelected,
                                                 isPeriod = isPeriod,
                                                 isPredicted = isPredicted,
                                                 isFertile = isFertile,
@@ -334,7 +337,7 @@ fun CalendarScreen(
                                                 }
                                             )
                                         } else {
-                                            Box(modifier = Modifier.size(38.dp))
+                                            Box(modifier = Modifier.size(42.dp))
                                         }
                                     }
                                 }
@@ -359,7 +362,9 @@ fun CalendarScreen(
                                         val dayNumber = cellIndex - dayOfWeekOffset + 1
                                         if (dayNumber in 1..daysInMonth) {
                                             val cellLocalDate = currentYearMonth.atDay(dayNumber)
+                                            val cellEthDate = EthiopianDate.fromGregorian(cellLocalDate)
                                             val isToday = cellLocalDate == today
+                                            val isSelected = selectedDateForSheet == cellLocalDate
                                             val isPeriod = CycleEngine.isDateInPeriod(cellLocalDate, allPeriods)
                                             val isPredicted = !isPeriod && CycleEngine.isDatePredictedPeriod(
                                                 cellLocalDate,
@@ -378,7 +383,9 @@ fun CalendarScreen(
 
                                             CalendarDayCell(
                                                 dayText = "$dayNumber",
+                                                secondaryDayText = "${cellEthDate.day}",
                                                 isToday = isToday,
+                                                isSelected = isSelected,
                                                 isPeriod = isPeriod,
                                                 isPredicted = isPredicted,
                                                 isFertile = isFertile,
@@ -389,7 +396,7 @@ fun CalendarScreen(
                                                 }
                                             )
                                         } else {
-                                            Box(modifier = Modifier.size(38.dp))
+                                            Box(modifier = Modifier.size(42.dp))
                                         }
                                     }
                                 }
@@ -739,7 +746,9 @@ fun CalendarScreen(
 @Composable
 fun CalendarDayCell(
     dayText: String,
+    secondaryDayText: String? = null,
     isToday: Boolean,
+    isSelected: Boolean = false,
     isPeriod: Boolean,
     isPredicted: Boolean,
     isFertile: Boolean,
@@ -750,12 +759,12 @@ fun CalendarDayCell(
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(38.dp)
-            .clip(CircleShape)
+            .size(42.dp)
+            .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
             .testTag("day_cell_$dayText")
     ) {
-        Canvas(modifier = Modifier.size(34.dp)) {
+        Canvas(modifier = Modifier.size(38.dp)) {
             val center = Offset(size.width / 2f, size.height / 2f)
             val radius = size.width / 2f - 2f
 
@@ -800,6 +809,16 @@ fun CalendarDayCell(
                 }
             }
 
+            // Selection highlight
+            if (isSelected) {
+                drawCircle(
+                    color = SoftRose,
+                    radius = radius + 1f,
+                    center = center,
+                    style = Stroke(width = 2.5.dp.toPx())
+                )
+            }
+
             // Today indicator: prominent glowing lavender ring on top
             if (isToday) {
                 drawCircle(
@@ -815,14 +834,14 @@ fun CalendarDayCell(
                 // Vibrant Romantic Coral-Pink dot / heart color for intercourse
                 drawCircle(
                     color = if (isPeriod) Color.White else SoftIntimacyHeart,
-                    radius = 3.dp.toPx(),
-                    center = Offset(center.x, size.height - 3.dp.toPx())
+                    radius = 2.5.dp.toPx(),
+                    center = Offset(center.x, size.height - 2.5.dp.toPx())
                 )
             } else if (hasLog) {
                 drawCircle(
                     color = if (isPeriod) Color.White else LavenderAccent,
-                    radius = 2.2.dp.toPx(),
-                    center = Offset(center.x, size.height - 3.dp.toPx())
+                    radius = 2.dp.toPx(),
+                    center = Offset(center.x, size.height - 2.5.dp.toPx())
                 )
             }
         }
@@ -843,12 +862,30 @@ fun CalendarDayCell(
             }
         }
 
-        Text(
-            text = dayText,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = if (isToday || isPeriod || hadSex) FontWeight.Bold else FontWeight.Normal,
-            color = if (isPeriod) Color.White else if (hadSex) SoftIntimacyHeart else MaterialTheme.colorScheme.onSurface
-        )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = dayText,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontSize = if (secondaryDayText != null) 13.sp else 14.sp,
+                    lineHeight = if (secondaryDayText != null) 14.sp else 18.sp
+                ),
+                fontWeight = if (isToday || isPeriod || hadSex || isSelected) FontWeight.Bold else FontWeight.Medium,
+                color = if (isPeriod) Color.White else if (hadSex) SoftIntimacyHeart else MaterialTheme.colorScheme.onSurface
+            )
+            if (secondaryDayText != null) {
+                Text(
+                    text = secondaryDayText,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 8.5.sp,
+                        lineHeight = 9.sp
+                    ),
+                    color = if (isPeriod) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
+                )
+            }
+        }
     }
 }
 

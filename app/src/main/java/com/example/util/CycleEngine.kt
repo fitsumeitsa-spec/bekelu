@@ -166,11 +166,11 @@ object CycleEngine {
         lastPeriodStart: LocalDate?,
         cycleLength: Int,
         periodLength: Int,
-        futureCycles: Int = 3
+        futureCycles: Int = 12
     ): Boolean {
-        if (lastPeriodStart == null) return false
+        val baseStart = lastPeriodStart ?: LocalDate.now().minusDays(21)
         for (i in 1..futureCycles) {
-            val predictedStart = lastPeriodStart.plusDays((cycleLength * i).toLong())
+            val predictedStart = baseStart.plusDays((cycleLength * i).toLong())
             val predictedEnd = predictedStart.plusDays((periodLength - 1).toLong())
             if (!date.isBefore(predictedStart) && !date.isAfter(predictedEnd)) {
                 return true
@@ -183,11 +183,11 @@ object CycleEngine {
         date: LocalDate,
         lastPeriodStart: LocalDate?,
         cycleLength: Int,
-        futureCycles: Int = 3
+        futureCycles: Int = 12
     ): Boolean {
-        if (lastPeriodStart == null) return false
+        val baseStart = lastPeriodStart ?: LocalDate.now().minusDays(21)
         for (i in 0..futureCycles) {
-            val nextStart = lastPeriodStart.plusDays((cycleLength * (i + 1)).toLong())
+            val nextStart = baseStart.plusDays((cycleLength * (i + 1)).toLong())
             val ovulation = nextStart.minusDays(14)
             val fertileStart = ovulation.minusDays(5)
             val fertileEnd = ovulation.plusDays(1)
